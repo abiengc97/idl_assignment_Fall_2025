@@ -1,1 +1,0 @@
-tar -cvf handin.tar --exclude='*__pycache__*' --exclude='*.pyc' models mytorch
