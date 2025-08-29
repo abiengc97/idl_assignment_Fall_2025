@@ -36,6 +36,16 @@ class Sigmoid:
     Define 'backward' function.
     Read the writeup (Hint: Sigmoid Section) for further details on Sigmoid forward and backward expressions.
     """
+    def forward(self, Z):
+        self.A = 1 / (1 + np.exp(-Z))
+        return self.A
+
+    def backward(self, dLdA):
+        dAdZ = self.A * (1 - self.A)
+        dLdZ = dLdA * dAdZ
+        return dLdZ
+        
+        
 
 
 class Tanh:
@@ -48,7 +58,14 @@ class Tanh:
     Define 'backward' function.
     Read the writeup (Hint: Tanh Section) for further details on Tanh forward and backward expressions.
     """
+    def forward(self, Z):
+        self.A = (np.exp(Z) - np.exp(-Z)) / (np.exp(Z) + np.exp(-Z))
+        return self.A
 
+    def backward(self, dLdA):
+        dAdZ = 1 - self.A ** 2
+        dLdZ = dLdA * dAdZ
+        return dLdZ
 
 class ReLU:
     """
@@ -60,7 +77,14 @@ class ReLU:
     Define 'backward' function.
     Read the writeup (Hint: ReLU Section) for further details on ReLU forward and backward expressions.
     """
+    def forward(self, Z):
+        self.A = np.maximum(0, Z)
+        return self.A
 
+    def backward(self, dLdA):
+        dAdZ = np.where(self.A > 0, 1, 0)
+        dLdZ = dLdA * dAdZ
+        return dLdZ
 
 class GELU:
     """
@@ -73,6 +97,14 @@ class GELU:
     Read the writeup (Hint: GELU Section) for further details on GELU forward and backward expressions.
     Note: Feel free to save any variables from gelu.forward that you might need for gelu.backward.
     """
+    def forward(self, Z):
+        self.A = 0.5 * Z * (1 + scipy.special.erf(Z / np.sqrt(2)))
+        return self.A
+
+    def backward(self, dLdA):
+        dAdZ = 0.5 * (1 + scipy.special.erf(self.A / np.sqrt(2))) + (self.A * np.exp(-0.5 * (self.A ** 2))) / np.sqrt(2 * np.pi)
+        dLdZ = dLdA * dAdZ
+        return dLdZ
 
 class Swish:
     """
@@ -84,8 +116,20 @@ class Swish:
     Define 'backward' function.
     Read the writeup (Hint: Swish Section) for further details on Swish forward and backward expressions.
     """
+    def __init__(self, beta=1.0):
+        self.beta = beta
+    def forward(self, Z):
+        self.A = Z / (1 + np.exp(-self.beta * Z))
+        return self.A
+    def backward(self, dLdA):
+        sigmoid = 1 / (1 + np.exp(-self.beta * self.Z))
+        dAdZ = sigmoid + self.beta * self.Z * sigmoid * (1 - sigmoid)
+        dLdZ = dLdA * dAdZ
+        dAdbeta = self.Z *self.Z* sigmoid * (1 - sigmoid)
+        self.dLdBeta = dLdA
+        return dLdZ
 
-
+ 
 class Softmax:
     """
     Softmax activation function.
@@ -104,13 +148,14 @@ class Softmax:
         It will use an entire row of Z to compute an output element.
         Note: How can we handle large overflow values? Hint: Check numerical stability.
         """
-        self.A = None  # TODO
-        raise NotImplementedError  # TODO - What should be the return value?
+        self.A = np.exp(Z - np.max(Z, axis=1, keepdims=True))
+        self.A = self.A / np.sum(self.A, axis=1, keepdims=True)
+        return self.A
 
     def backward(self, dLdA):
         # Calculate the batch size and number of features
-        N = None  # TODO
-        C = None  # TODO
+        N =  
+        C = 
 
         # Initialize the final output dLdZ with all zeros. Refer to the writeup and think about the shape.
         dLdZ = None  # TODO
