@@ -19,14 +19,14 @@ class MLP0:
         Pass the input through the linear layer followed by the activation layer to get the model output.
         Read the writeup (Hint: MLP0 Section) for further details on MLP0 forward and backward implementation.
         """
-        Z0 = None  # TODO
-        A1 = None  # TODO
+        Z0 = self.layers[0].forward(A0)
+        A1 = self.layers[1].forward(Z0)
 
         if self.debug:
             self.Z0 = Z0
             self.A1 = A1
 
-        raise NotImplementedError  # TODO - What should be the return value?
+        return A1 
 
     def backward(self, dLdA1):
         """
@@ -34,14 +34,14 @@ class MLP0:
         Read the writeup (Hint: MLP0 Section) for further details on MLP0 forward and backward implementation.
         Refer to the pseudocode in the writeup to implement backpropagation through the model.
         """
-        dLdZ0 = None  # TODO
-        dLdA0 = None  # TODO
+        dLdZ0 = self.layers[1].backward(dLdA1)
+        dLdA0 = self.layers[0].backward(dLdZ0)
 
         if self.debug:
             self.dLdZ0 = dLdZ0
             self.dLdA0 = dLdA0
 
-        raise NotImplementedError  # TODO - What should be the return value?
+        return dLdA0
 
 
 class MLP1:
@@ -54,7 +54,7 @@ class MLP1:
         Implement it on the same lines (in a list) as in the MLP0 class.
         """
         self.debug = debug
-        self.layers = None  # TODO
+        self.layers = [Linear(2, 3), ReLU(), Linear(3, 2), ReLU()]
 
     def forward(self, A0):
         """
@@ -62,11 +62,11 @@ class MLP1:
         Pass the input through the linear layers and corresponding activation layer alternately to get the model output.
         Read the writeup (Hint: MLP1 Section) for further details on MLP1 forward and backward implementation.
         """
-        Z0 = None  # TODO
-        A1 = None  # TODO
+        Z0 = self.layers[0].forward(A0)
+        A1 = self.layers[1].forward(Z0)
 
-        Z1 = None  # TODO
-        A2 = None  # TODO
+        Z1 = self.layers[2].forward(A1)
+        A2 = self.layers[3].forward(Z1)
 
         if self.debug:
             self.Z0 = Z0
@@ -74,7 +74,7 @@ class MLP1:
             self.Z1 = Z1
             self.A2 = A2
 
-        raise NotImplementedError  # TODO - What should be the return value?
+        return A2
 
     def backward(self, dLdA2):
         """
@@ -82,11 +82,11 @@ class MLP1:
         Read the writeup (Hint: MLP1 Section) for further details on MLP1 forward and backward implementation.
         Refer to the pseudocode in the writeup to implement backpropagation through the model.
         """
-        dLdZ1 = None  # TODO
-        dLdA1 = None  # TODO
+        dLdZ1 = self.layers[3].backward(dLdA2)
+        dLdA1 = self.layers[2].backward(dLdZ1)
 
-        dLdZ0 = None  # TODO
-        dLdA0 = None  # TODO
+        dLdZ0 = self.layers[1].backward(dLdA1)
+        dLdA0 = self.layers[0].backward(dLdZ0)
 
         if self.debug:
             self.dLdZ1 = dLdZ1
@@ -94,7 +94,7 @@ class MLP1:
             self.dLdZ0 = dLdZ0
             self.dLdA0 = dLdA0
 
-        raise NotImplementedError  # TODO - What should be the return value?
+        return dLdA0
 
 
 class MLP4:
@@ -113,7 +113,7 @@ class MLP4:
         """
         # Note: List of Hidden and Activation Layers in the correct order.
         self.debug = debug
-        self.layers = None  # TODO
+        self.layers = [Linear(2, 4), ReLU(), Linear(4, 8), ReLU(), Linear(8, 8), ReLU(), Linear(8, 4), ReLU(), Linear(4, 2), ReLU()]
 
     def forward(self, A):
         """
@@ -127,11 +127,11 @@ class MLP4:
         L = len(self.layers)
 
         for i in range(L):
-            A = None  # TODO
+            A = self.layers[i].forward(A)
             if self.debug:
                 self.A.append(A)
 
-        raise NotImplementedError  # TODO - What should be the return value?
+        return A
 
     def backward(self, dLdA):
         """
@@ -145,8 +145,8 @@ class MLP4:
         L = len(self.layers)
 
         for i in reversed(range(L)):
-            dLdA = None  # TODO
+            dLdA = self.layers[i].backward(dLdA)
             if self.debug:
                 self.dLdA = [dLdA] + self.dLdA
 
-        raise NotImplementedError  # TODO - What should be the return value?
+        return dLdA

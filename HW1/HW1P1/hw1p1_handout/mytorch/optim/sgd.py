@@ -26,13 +26,13 @@ class SGD:
         for i in range(self.L):
             if self.mu == 0:
                 # If no momentum, use standard SGD update.
-                self.l[i].W = None  # TODO: Update weights using gradients
-                self.l[i].b = None  # TODO: Update biases using gradients
+                self.l[i].W = self.l[i].W - self.lr * self.l[i].dLdW
+                self.l[i].b = self.l[i].b - self.lr * self.l[i].dLdb
             else:
                 # If momentum is used, update velocity terms.
-                self.v_W[i] = None  # TODO: Update weight velocity
-                self.v_b[i] = None  # TODO: Update bias velocity
+                self.v_W[i] = self.mu * self.v_W[i] +self.l[i].dLdW
+                self.v_b[i] = self.mu * self.v_b[i] + self.l[i].dLdb
 
                 # Update weights and biases using momentum and learning rate.
-                self.l[i].W = None  # TODO: Update weights using weight velocity
-                self.l[i].b = None  # TODO: Update biases using bias velocity
+                self.l[i].W = self.l[i].W - self.lr * self.v_W[i]
+                self.l[i].b = self.l[i].b - self.lr * self.v_b[i]

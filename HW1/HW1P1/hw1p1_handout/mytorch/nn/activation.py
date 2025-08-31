@@ -98,11 +98,13 @@ class GELU:
     Note: Feel free to save any variables from gelu.forward that you might need for gelu.backward.
     """
     def forward(self, Z):
+        self.Z = Z
         self.A = 0.5 * Z * (1 + scipy.special.erf(Z / np.sqrt(2)))
         return self.A
 
     def backward(self, dLdA):
-        dAdZ = 0.5 * (1 + scipy.special.erf(self.A / np.sqrt(2))) + (self.A * np.exp(-0.5 * (self.A ** 2))) / np.sqrt(2 * np.pi)
+        dAdZ = 0.5 * (1 + scipy.special.erf(self.Z / np.sqrt(2))) \
+           + (self.Z / np.sqrt(2 * np.pi)) * np.exp(-0.5 * self.Z**2)
         dLdZ = dLdA * dAdZ
         return dLdZ
 
@@ -119,14 +121,15 @@ class Swish:
     def __init__(self, beta=1.0):
         self.beta = beta
     def forward(self, Z):
-        self.A = Z / (1 + np.exp(-self.beta * Z))
+        self.A = Z *(1/(1 + np.exp(-self.beta * Z)))
+        self.Z = Z
         return self.A
     def backward(self, dLdA):
         sigmoid = 1 / (1 + np.exp(-self.beta * self.Z))
         dAdZ = sigmoid + self.beta * self.Z * sigmoid * (1 - sigmoid)
         dLdZ = dLdA * dAdZ
         dAdbeta = self.Z *self.Z* sigmoid * (1 - sigmoid)
-        self.dLdBeta = dLdA
+        self.dLdbeta = np.sum(dLdA * dAdbeta)
         return dLdZ
 
  
@@ -154,25 +157,25 @@ class Softmax:
 
     def backward(self, dLdA):
         # Calculate the batch size and number of features
-        N =  
-        C = 
+        N =  self.A.shape[0]
+        C =  self.A.shape[1]
 
         # Initialize the final output dLdZ with all zeros. Refer to the writeup and think about the shape.
-        dLdZ = None  # TODO
+        dLdZ = np.zeros((N, C))
 
         # Fill dLdZ one data point (row) at a time.
         for i in range(N):
             # Initialize the Jacobian with all zeros.
             # Hint: Jacobian matrix for softmax is a _×_ matrix, but what is _ here?
-            J = None  # TODO
+            J = np.zeros((C, C))
 
             # Fill the Jacobian matrix, please read the writeup for the conditions.
             for m in range(C):
                 for n in range(C):
-                    J[m, n] = None  # TODO
+                    J[m, n] = self.A[i, m] * (1 - self.A[i, n]) if m == n else -self.A[i, m] * self.A[i, n]
 
             # Calculate the derivative of the loss with respect to the i-th input, please read the writeup for it.
             # Hint: How can we use (1×C) and (C×C) to get (1×C) and stack up vertically to give (N×C) derivative matrix?
-            dLdZ[i, :] = None  # TODO
+            dLdZ[i, :] = dLdA[i, :] @ J
 
-        raise NotImplementedError  # TODO - What should be the return value?
+        return dLdZ

@@ -8,7 +8,7 @@ class Linear:
         Read the writeup (Hint: Linear Layer Section Table) to identify the right shapes for `W` and `b`.
         """
         self.debug = debug
-        self.W = np.zero(out_features, in_features)
+        self.W = np.zeros((out_features, in_features))
         self.b = np.zeros((out_features, 1))
 
     def forward(self, A):
@@ -24,7 +24,7 @@ class Linear:
         # Think how can `self.ones` help in the calculations and uncomment below code snippet.
         self.ones = np.ones((self.N, 1))
 
-        Z= self.A @ self.W.T + self.ones @ self.b.T
+        Z = self.A @ self.W.T + self.ones @ self.b.T
         return Z
 
     def backward(self, dLdZ):
@@ -36,7 +36,7 @@ class Linear:
         """
         dLdA = dLdZ @ self.W
         self.dLdW = dLdZ.T @ self.A
-        self.dLdb =  dLdZ.T @ self.ones
+        self.dLdb = dLdZ.T @ self.ones
 
         if self.debug:
             self.dLdA = dLdA
