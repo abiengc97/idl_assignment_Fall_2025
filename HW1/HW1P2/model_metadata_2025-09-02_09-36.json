@@ -1,0 +1,4 @@
+{
+  "parameter_count": 12963370,
+  "model_architecture": "Network(\n  (model): Sequential(\n    (0): Linear(in_features=1708, out_features=2048, bias=True)\n    (1): ReLU()\n    (2): Linear(in_features=2048, out_features=2048, bias=True)\n    (3): ReLU()\n    (4): Linear(in_features=2048, out_features=2048, bias=True)\n    (5): ReLU()\n    (6): Linear(in_features=2048, out_features=512, bias=True)\n    (7): ReLU()\n    (8): Linear(in_features=512, out_features=42, bias=True)\n  )\n)"
+}

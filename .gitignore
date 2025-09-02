@@ -1,2 +1,27 @@
 /HW1/HW1P2/11785-f25-hw1p2
 __pycache__
+#alll.pth files
+*.pth
+*.pt
+*.pkl
+*.ckpt
+#wandb files
+wandb/
+#kaggle files
+kaggle/
+#model files
+model/
+#submission files
+submission/
+#python checkpoint files
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+#python cache files
+__pycache__/
+#all files with _sub in the name
+*_sub.ipynb
+*_sub.pth
+*.ipynb_checkpoints/

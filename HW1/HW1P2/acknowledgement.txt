@@ -1,0 +1,11 @@
+Submission of this file and assignment indicate the student's agreement to the following Aknowledgement requirements:
+Setting the ACNKOWLEDGED flag to True indicates full understanding and acceptance of the following:
+1. Slack days may ONLY be used on P2 FINAL (not checkpoint) submission. I.e. you may use slack days to submit final P2 kaggle scores (such as this one) later on the **SLACK KAGGLE COMPETITION** at the expense of your Slack days.
+2. The final autolab **code submission is due 48 hours after** the conclusion of the Kaggle Deadline (or, the same day as your final kaggle submission).
+3. Course staff will require your kaggle username here, and then will pull your official PRIVATE kaggle leaderboard score. This submission may result in slight variance in scores/code, but we will check for acceptable discrepancies. Any discrepancies related to modifying the submission code (at the bottom of the notebook) will result in an AIV.
+4. You are NOT allowed to use any code that will pre-load models (such as those from Hugging Face, etc.).
+   You MAY use models described by papers or articles, but you MUST implement them yourself through fundamental PyTorch operations (i.e. Linear, Conv2d, etc.).
+5. You are NOT allowed to use any external data/datasets at ANY point of this assignment.
+6. You may work with teammates to run ablations/experiments, BUT you must submit your OWN code and your OWN results.
+7. Failure to comply with the prior rules will be considered an Academic Integrity Violation (AIV).
+8. Late submissions MUST be submitted through the Slack Kaggle (see writeup for details). Any submissions made to the regular Kaggle after the original deadline will NOT be considered, no matter how many slack days remain for the student.
