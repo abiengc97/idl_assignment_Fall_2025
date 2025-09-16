@@ -1,4 +1,4 @@
-- **Model**: Model archtiecture description. Anything unique? Any specific architecture shapes or strategies?
-- **Training Strategy**: optimizer + scheduler + loss function + any other unique ideas
-- **Augmentations**: augmentations if used. If augmentations weren't used, then ignore
+- **Model**: Model archtiecture description. Anything unique? Any specific architecture shapes or strategies?pyramind
+- **Training Strategy**: optimizer + scheduler + loss function + any other unique ideas: retrained with checkpoint model_96.pth with lower lr
+- **Augmentations**: augmentations if used. If augmentations weren't used, then ignore: both are used with lower probability for augmentation
 - **Notebook Execution**: Any instructions required to run your notebook.
