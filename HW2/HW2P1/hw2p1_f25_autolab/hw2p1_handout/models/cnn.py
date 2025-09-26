@@ -63,10 +63,8 @@ class CNN(object):
         # <---------------------
 
         self.convolutional_layers = []
-        self.activation_layers = []
         for i in range(self.nlayers):
             self.convolutional_layers.append(Conv1d(in_channels=num_input_channels, out_channels=num_channels[i], kernel_size=kernel_sizes[i], stride=strides[i], weight_init_fn=conv_weight_init_fn, bias_init_fn=bias_init_fn))
-            self.activation_layers.append(activations[i])
             num_input_channels = num_channels[i]  # Update input channels for next layer
         self.flatten = Flatten()
         output_width = input_width
@@ -92,7 +90,7 @@ class CNN(object):
         # Save output (necessary for error and loss)
         for i in range(self.nlayers):
             A = self.convolutional_layers[i].forward(A)
-            A = self.activation_layers[i].forward(A)
+            A = self.activations[i].forward(A)
 
         A = self.flatten.forward(A)
         A = self.linear_layer.forward(A)
@@ -116,7 +114,7 @@ class CNN(object):
         grad = self.linear_layer.backward(grad)
         grad = self.flatten.backward(grad)
         for i in range(self.nlayers - 1, -1, -1):  # Reverse order
-            grad = self.activation_layers[i].backward(grad)
+            grad = self.activations[i].backward(grad)
             grad = self.convolutional_layers[i].backward(grad)
         
 
