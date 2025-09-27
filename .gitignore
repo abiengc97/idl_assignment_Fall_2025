@@ -25,3 +25,13 @@ __pycache__/
 *_sub.ipynb
 *_sub.pth
 *.ipynb_checkpoints/
+#ignore data files
+data/
+#ignore wandb files
+wandb/
+#ignore kaggle files
+kaggle/
+#ignore model files
+model/
+#ignore submission files
+submission/
