@@ -1,4 +1,0 @@
-- **Model**: Model archtiecture description. Anything unique? Any specific architecture shapes or strategies?
-- **Training Strategy**: optimizer + scheduler + loss function + any other unique ideas
-- **Augmentations**: augmentations if used. If augmentations weren't used, then ignore
-- **Notebook Execution**: Any instructions required to run your notebook.
