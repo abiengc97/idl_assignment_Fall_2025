@@ -114,6 +114,7 @@ class CNN(object):
         grad = self.linear_layer.backward(grad)
         grad = self.flatten.backward(grad)
         for i in range(self.nlayers - 1, -1, -1):  # Reverse order
+            print(self.activations[i])
             grad = self.activations[i].backward(grad)
             grad = self.convolutional_layers[i].backward(grad)
         
