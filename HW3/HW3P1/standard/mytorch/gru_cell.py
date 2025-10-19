@@ -90,6 +90,16 @@ class GRUCell(object):
         # Add your code here.
         # Define your variables based on the writeup using the corresponding
         # names below.
+        # Save commonly reused intermediates for backward
+        self.a_r = self.Wrx@x + self.brx + self.Wrh@h_prev_t + self.brh
+        self.a_z = self.Wzx@x + self.bzx + self.Wzh@h_prev_t + self.bzh
+        self.a_nh = self.Wnh@h_prev_t + self.bnh
+        self.r = self.r_act.forward(self.a_r)
+        self.z = self.z_act.forward(self.a_z)
+        self.n_pre = self.Wnx@x + self.bnx + self.r*self.a_nh
+        self.n = self.h_act.forward(self.n_pre)
+        h_t = (1 - self.z)*self.n + self.z*h_prev_t
+        
 
         assert self.x.shape == (self.d,)
         assert self.hidden.shape == (self.h,)
@@ -100,7 +110,7 @@ class GRUCell(object):
         assert h_t.shape == (self.h,)  # h_t is the final output of you GRU cell.
 
         # return h_t
-        raise NotImplementedError
+        return h_t
 
     def backward(self, delta):
         """GRU cell backward.
@@ -134,9 +144,45 @@ class GRUCell(object):
         # ADDITIONAL TIP:
         # Make sure the shapes of the calculated dWs and dbs  match the
         # initalized shapes accordingly
+        
+        # Upstream gradient
+        dh = delta
+
+        # Gate derivatives using chain rule
+        # h = (1 - z) * n + z * h_prev
+        dz_pre = self.z_act.backward(dh * (self.hidden - self.n))
+        dn_pre = self.h_act.backward(dh * (1 - self.z), state=self.n)
+        # n_pre depends on r via a_nh term
+        dr_pre = self.r_act.backward(dn_pre * self.a_nh)
+
+        # Parameter gradients (use outer products)
+        self.dWzx += np.outer(dz_pre, self.x)
+        self.dWzh += np.outer(dz_pre, self.hidden)
+        self.dbzx += dz_pre
+        self.dbzh += dz_pre
+
+        self.dWnx += np.outer(dn_pre, self.x)
+        self.dWnh += np.outer(dn_pre * self.r, self.hidden)
+        self.dbnx += dn_pre
+        self.dbnh += dn_pre * self.r
+
+        self.dWrx += np.outer(dr_pre, self.x)
+        self.dWrh += np.outer(dr_pre, self.hidden)
+        self.dbrx += dr_pre
+        self.dbrh += dr_pre
+
+        # Input gradients
+        dx = self.Wnx.T@dn_pre + self.Wzx.T@dz_pre + self.Wrx.T@dr_pre
+        # Hidden gradients (previous time step)
+        dh_prev_t = (
+            dh * self.z
+            + self.Wzh.T@dz_pre
+            + self.Wrh.T@dr_pre
+            + self.Wnh.T@(dn_pre * self.r)
+        )
 
         assert dx.shape == (self.d,)
         assert dh_prev_t.shape == (self.h,)
 
         # return dx, dh_prev_t
-        raise NotImplementedError
+        return dx, dh_prev_t

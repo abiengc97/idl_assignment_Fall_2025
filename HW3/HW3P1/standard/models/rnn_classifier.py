@@ -15,12 +15,12 @@ class RNNPhonemeClassifier(object):
         self.num_layers = num_layers
 
         # TODO: Understand then uncomment this code :)
-        # self.rnn = [
-        #     RNNCell(input_size, hidden_size) if i == 0 
-        #         else RNNCell(hidden_size, hidden_size)
-        #             for i in range(num_layers)
-        # ]
-        # self.output_layer = Linear(hidden_size, output_size)
+        self.rnn = [
+            RNNCell(input_size, hidden_size) if i == 0 
+                else RNNCell(hidden_size, hidden_size)
+                    for i in range(num_layers)
+        ]
+        self.output_layer = Linear(hidden_size, output_size)
 
         # store hidden states at each time step, [(seq_len+1) * (num_layers, batch_size, hidden_size)]
         self.hiddens = []
@@ -94,7 +94,15 @@ class RNNPhonemeClassifier(object):
         # <--------------------------
         
         # return logits 
-        raise NotImplementedError
+        for t in range(seq_len):
+            for l in range(self.num_layers):
+                if l == 0:
+                    hidden[l] = self.rnn[l](x[:, t, :], hidden[l])
+                else:
+                    hidden[l] = self.rnn[l](hidden[l-1], hidden[l])
+            self.hiddens.append(hidden.copy())
+            logits = self.output_layer(hidden[-1])
+        return logits
 
     def backward(self, delta):
         """RNN Back Propagation Through Time (BPTT).
@@ -145,4 +153,14 @@ class RNNPhonemeClassifier(object):
         # TODO
 
         # return dh / batch_size
-        raise NotImplementedError
+        for t in range(seq_len-1, -1, -1):
+            for l in range(self.num_layers-1, -1, -1):
+                if l == 0:
+                   dx, dh[l] = self.rnn[l].backward(dh[l], self.hiddens[t+1][l], self.x[:, t, :], self.hiddens[t][l])
+                else:
+                    dx, dh[l] = self.rnn[l].backward(dh[l], self.hiddens[t+1][l], self.hiddens[t+1][l-1], self.hiddens[t][l])
+                if l != 0:
+                    dh[l-1] += dx
+    
+                
+        return dh / batch_size
