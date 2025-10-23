@@ -1,0 +1,27 @@
+
+# Subset of dataset to use (1.0 == 100% of data) = when you want to test if your notebook is running, you can use a subset of data
+subset: 1.0
+learning_rate: 0.001
+epochs: 150
+train_beam_width: 5
+test_beam_width: 7
+mfcc_features: 28 # DO NOT MODIFY
+input_size: 28
+# Set embedding size (the dimensionality of the LSTM hidden state)
+embed_size: 256   # {64,128,256} Try out higher embed_size if you have powerfull GPU(RAM) other than T4
+
+batch_size: 128 # Increase if your device can handle it
+
+encoder dropout: 0.2
+lstm dropout: 0.2
+decoder dropout: 0.2
+wandb: True # Set to True if you want to use WanDB
+
+# Progressive Augmentation Curriculum
+# Phase 1: Start with light augmentation (10, 10)
+# Phase 2: After loading checkpoint, increase to (20, 20) or (30, 30)
+freq_mask_param: 20
+time_mask_param: 20
+
+Name: "Abiencherian" # Write your name here
+RUN_NAME: "ablation3-higher masking after checkpoint from ab2"
