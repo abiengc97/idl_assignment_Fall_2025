@@ -1,27 +1,36 @@
 
 # Subset of dataset to use (1.0 == 100% of data) = when you want to test if your notebook is running, you can use a subset of data
 subset: 1.0
-learning_rate: 0.001
-epochs: 150
-train_beam_width: 5
-test_beam_width: 7
+learning_rate: 1e-4  # Slightly lower LR for fine-tuning from checkpoint - helps stability
+epochs: 250  # Train longer for better convergence
+train_beam_width: 6   # Max allowed
+test_beam_width: 6    # Max allowed - must improve model itself
 mfcc_features: 28 # DO NOT MODIFY
 input_size: 28
+kernel_size: 15  # Kernel size for Conv1d embedding (from successful notebook)
 # Set embedding size (the dimensionality of the LSTM hidden state)
-embed_size: 256   # {64,128,256} Try out higher embed_size if you have powerfull GPU(RAM) other than T4
+embed_size: 256   # Reduced from 256 to save parameters while staying under 20M
 
-batch_size: 128 # Increase if your device can handle it
+# Data directories
+mfcc_train_dir: "/home/agcheria/idl_assignment_Fall_2025/HW3/HW3P2/11785-hw3p2/train-clean-100/mfcc"
+mfcc_val_dir: "/home/agcheria/idl_assignment_Fall_2025/HW3/HW3P2/11785-hw3p2/dev-clean/mfcc"
+mfcc_test_dir: "/home/agcheria/idl_assignment_Fall_2025/HW3/HW3P2/11785-hw3p2/test-clean/mfcc"
+transcript_train_dir: "/home/agcheria/idl_assignment_Fall_2025/HW3/HW3P2/11785-hw3p2/train-clean-100/transcript"
+transcript_val_dir: "/home/agcheria/idl_assignment_Fall_2025/HW3/HW3P2/11785-hw3p2/dev-clean/transcript"
+fraction: 1.0  # Fraction of dataset to use
 
-encoder dropout: 0.2
-lstm dropout: 0.2
-decoder dropout: 0.2
+batch_size: 96 # Balanced between 64 and 128
+
+encoder dropout: 0.2  # Back to proven value
+lstm dropout: 0.2     # Back to proven value  
+decoder dropout: 0.25  # Slightly higher in decoder
 wandb: True # Set to True if you want to use WanDB
 
 # Progressive Augmentation Curriculum
 # Phase 1: Start with light augmentation (10, 10)
 # Phase 2: After loading checkpoint, increase to (20, 20) or (30, 30)
-freq_mask_param: 20
-time_mask_param: 20
+freq_mask_param: 30  # Your proven best
+time_mask_param: 30  # Your proven best
 
 Name: "Abiencherian" # Write your name here
-RUN_NAME: "ablation3-higher masking after checkpoint from ab2"
+RUN_NAME: "EfficientNet based embedding-circiculum"
