@@ -1,0 +1,23 @@
+name: IDL
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1   # GPU build (works with your RTX 3090 + CUDA 13 driver)
+  - matplotlib
+  - scikit-learn
+  - tqdm
+  - pip
+  - pip:
+      - tensorflow==2.12   # CPU build (safe with PyTorch GPU)
+      - wandb
+      - torchsummary
+
+# conda env create -f environment.yml
+# conda activate IDL_F25
+# python -m ipykernel install --user --name=IDL_F25 --display-name "Python (IDL_F25)"
