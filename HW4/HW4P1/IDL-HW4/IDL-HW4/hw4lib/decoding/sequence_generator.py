@@ -165,7 +165,30 @@ class SequenceGenerator:
             raise ValueError("max_length must be >= input sequence length")
         
         # TODO: Implement greedy search
-        raise NotImplementedError # Remove once implemented
+        x = x.to(self.device)
+        batch_size = x.size(0)
+        scores = torch.zeros(batch_size, device=x.device)
+        finished = torch.zeros(batch_size, dtype=torch.bool, device=x.device)
+
+        for _ in range(self.max_length - x.size(1)):
+            if finished.all():
+                break
+
+            logits = self.score_fn(x)                           # (B, V)
+            logits = logits / temperature
+            logits = self._apply_repeat_penalty(logits, x, penalty=repeat_penalty)
+
+            next_tokens = torch.argmax(logits, dim=-1)          # (B,)
+            token_logp = _gather_logprobs(logits, next_tokens)  # (B,)
+
+            # only update scores for unfinished rows
+            scores = torch.where(finished, scores, scores + token_logp)
+            x = torch.cat([x, next_tokens.unsqueeze(1)], dim=1)
+
+            hit_eos = (next_tokens == self.tokenizer.eos_id)
+            finished = finished | hit_eos
+
+        return x, scores
 
     def generate_beam(
             self,
@@ -197,7 +220,68 @@ class SequenceGenerator:
             raise ValueError("max_length must be >= input sequence length")
         
         # TODO: Implement beam search
-        raise NotImplementedError # Remove once implemented
+        x = x.to(self.device)
+        B, L0 = x.shape
+        V_EOS = self.tokenizer.eos_id
+
+        # Initialize beams
+        beams = x.unsqueeze(1).repeat(1, beam_width, 1)            # (B, K, L)
+        beam_scores = torch.zeros(B, beam_width, device=x.device)  # log-prob sums
+        finished = torch.zeros(B, beam_width, dtype=torch.bool, device=x.device)
+
+        # At first step, only the first beam is active; others are -inf so they won't win until expanded.
+        beam_scores[:, 1:] = float("-inf")
+
+        for _ in range(self.max_length - L0):
+            if finished.all():
+                break
+
+            B_, K, L = beams.shape
+            flat = beams.reshape(B * K, L)                          # (B*K, L)
+
+            logits = self.score_fn(flat)                            # (B*K, V)
+            logits = logits / temperature
+            logits = self._apply_repeat_penalty(logits, flat, penalty=repeat_penalty)
+            log_probs = F.log_softmax(logits, dim=-1)               # (B*K, V)
+
+            # If a beam is finished, force it to only extend with EOS (keep it frozen)
+            # to avoid changing its score/content.
+            eos_mask = finished.view(B * K)                         # (B*K,)
+            if eos_mask.any():
+                frozen = torch.full_like(log_probs, float("-inf"))
+                frozen[:, V_EOS] = 0.0
+                log_probs = torch.where(eos_mask.unsqueeze(1), frozen, log_probs)
+
+            # Expand: for each (B, K), consider all V next tokens → (B, K, V)
+            cand_scores = beam_scores.unsqueeze(-1) + log_probs.view(B, K, -1)  # (B, K, V)
+
+            # Select top-K beams across K*V per batch
+            cand_scores_flat = cand_scores.view(B, -1)              # (B, K*V)
+            topk_scores, topk_indices = torch.topk(cand_scores_flat, k=beam_width, dim=-1)
+
+            # Recover parent beam and next token from flattened index
+            parent_beam = topk_indices // log_probs.size(-1)        # (B, K)
+            next_token  = topk_indices %  log_probs.size(-1)        # (B, K)
+
+            # Gather sequences
+            gather_beams = torch.gather(
+                beams, dim=1,
+                index=parent_beam.unsqueeze(-1).expand(-1, -1, L)
+            )                                                       # (B, K, L)
+            beams = torch.cat([gather_beams, next_token.unsqueeze(-1)], dim=-1)  # (B, K, L+1)
+
+            # Update scores and finished flags
+            beam_scores = topk_scores
+            newly_finished = (next_token == V_EOS)
+            finished = torch.gather(finished, dim=1, index=parent_beam) | newly_finished
+
+        # Sort beams within each batch by score (descending)
+        sorted_scores, order = torch.sort(beam_scores, dim=1, descending=True)
+        B, K, L = beams.shape
+        sorted_beams = torch.gather(
+            beams, dim=1, index=order.unsqueeze(-1).expand(B, K, L)
+        )
+        return sorted_beams, sorted_scores
 
     def generate_sample(
             self,

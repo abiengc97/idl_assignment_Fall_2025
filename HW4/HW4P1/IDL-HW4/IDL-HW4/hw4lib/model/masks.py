@@ -25,8 +25,25 @@ def PadMask(padded_input, input_lengths):
             - padding positions are marked with True 
             - non-padding positions are marked with False.
     """
-    # TODO: Implement PadMask
-    raise NotImplementedError # Remove once implemented
+    if padded_input.ndim < 2:
+        raise ValueError("padded_input must have at least 2 dimensions (N, T, ...).")
+
+    if input_lengths.ndim != 1:
+        raise ValueError("input_lengths must be a 1D tensor containing sequence lengths.")
+
+    if padded_input.size(0) != input_lengths.size(0):
+        raise ValueError("Batch size of padded_input must match length of input_lengths.")
+
+    device = padded_input.device
+    dtype = torch.bool
+
+    T = padded_input.size(1)
+    # Shape: (1, T)
+    time_indices = torch.arange(T, device=device)
+    # Shape: (N, 1)
+    lengths = input_lengths.to(device=device)
+    mask = time_indices.unsqueeze(0) >= lengths.unsqueeze(1)
+    return mask.to(dtype)
 
 ''' 
 TODO: Implement this function.
@@ -51,6 +68,11 @@ def CausalMask(padded_input):
             - non-causal positions (don't attend to) are marked with True 
             - causal positions (can attend to) are marked with False.
     """
-    # TODO: Implement CausalMask
-    raise NotImplementedError # Remove once implemented
+    if padded_input.ndim < 2:
+        raise ValueError("padded_input must have at least 2 dimensions (N, T, ...).")
+
+    device = padded_input.device
+    T = padded_input.size(1)
+    mask = torch.triu(torch.ones((T, T), device=device, dtype=torch.bool), diagonal=1)
+    return mask
 
