@@ -23,8 +23,9 @@ class Softmax:
         # TODO: Implement forward pass
         # Compute the softmax in a numerically stable way
         # Apply it to the dimension specified by the `dim` parameter
-        self.A = NotImplementedError
-        raise NotImplementedError
+        self.A = np.exp(Z - np.max(Z, axis=self.dim, keepdims=True))
+        self.A = self.A / np.sum(self.A, axis=self.dim, keepdims=True)
+        return self.A
 
     def backward(self, dLdA):
         """
@@ -36,20 +37,56 @@ class Softmax:
         # Get the shape of the input
         shape = self.A.shape
         # Find the dimension along which softmax was applied
-        C = shape[self.dim]
-           
+        dim = self.dim
+        # Normalize dim to positive index
+        if dim < 0:
+            dim = len(shape) + dim
+        C = shape[dim]
+        
         # Reshape input to 2D
         if len(shape) > 2:
-            self.A = NotImplementedError
-            dLdA = NotImplementedError
-
+            # Step 1: Move dimension to last position
+            A_moved = np.moveaxis(self.A, dim, -1)  # Shape: (*, C)
+            dLdA_moved = np.moveaxis(dLdA, dim, -1)  # Shape: (*, C)
+            
+            # Step 2: Flatten remaining dimensions to get 2D tensor
+            A_2d = A_moved.reshape(-1, C)  # Shape: (batch_size, C)
+            dLdA_2d = dLdA_moved.reshape(-1, C)  # Shape: (batch_size, C)
+        else:
+            # For 2D or 1D tensors
+            A_2d = self.A.reshape(-1, C)
+            dLdA_2d = dLdA.reshape(-1, C)
+        
+        # Step 3: Perform operations on 2D tensor (like HW1P1)
+        N = A_2d.shape[0]  # Number of samples
+        dLdZ_2d = np.zeros_like(A_2d)  # Initialize output gradient
+        
+        for i in range(N):
+            # Initialize the Jacobian with all zeros.
+            # Hint: Jacobian matrix for softmax is a C×C matrix
+            J = np.zeros((C, C))
+            
+            # Fill the Jacobian matrix, please read the writeup for the conditions.
+            for m in range(C):
+                for n in range(C):
+                    J[m, n] = A_2d[i, m] * (1 - A_2d[i, m]) if m == n else -A_2d[i, m] * A_2d[i, n]
+            
+            # Calculate the derivative of the loss with respect to the i-th input, please read the writeup for it.
+            # Hint: How can we use (1×C) and (C×C) to get (1×C) and stack up vertically to give (N×C) derivative matrix?
+            dLdZ_2d[i, :] = dLdA_2d[i, :] @ J
+        
         # Reshape back to original dimensions if necessary
         if len(shape) > 2:
-            # Restore shapes to original
-            self.A = NotImplementedError
-            dLdZ = NotImplementedError
+            # Step 4: Reshape back to shape with dim at end
+            dLdZ_moved = dLdZ_2d.reshape(A_moved.shape)
+            
+            # Step 5: Move dimension back to original position
+            dLdZ = np.moveaxis(dLdZ_moved, -1, dim)
+        else:
+            # For 2D or 1D, reshape back to original shape
+            dLdZ = dLdZ_2d.reshape(shape)
 
-        raise NotImplementedError
+        return dLdZ
  
 
     
