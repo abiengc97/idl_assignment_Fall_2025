@@ -9,8 +9,7 @@ __pycache__
 wandb/
 #kaggle files
 kaggle/
-#model files
-model/
+
 #submission files
 submission/
 #python checkpoint files
