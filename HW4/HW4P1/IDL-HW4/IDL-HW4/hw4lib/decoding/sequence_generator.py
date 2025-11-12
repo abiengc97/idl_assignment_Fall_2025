@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from typing import Tuple, Optional, List, Callable
 from ..data import H4Tokenizer
 
@@ -40,6 +41,18 @@ Implementation Notes:
    - Handle EOS token detection
    - Support early stopping
 '''
+
+def _gather_logprobs(logits: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
+    """
+    Gather per-row log-probabilities for selected token indices.
+    Args:
+        logits: Tensor of shape (batch_size, vocab_size)
+        indices: Tensor of shape (batch_size,) with chosen token ids
+    Returns:
+        Tensor of shape (batch_size,) containing log-probabilities for the chosen tokens
+    """
+    log_probs = torch.log_softmax(logits, dim=-1)
+    return log_probs.gather(1, indices.unsqueeze(1)).squeeze(1)
 
 class SequenceGenerator:
     """
@@ -254,14 +267,15 @@ class SequenceGenerator:
 
             # Expand: for each (B, K), consider all V next tokens → (B, K, V)
             cand_scores = beam_scores.unsqueeze(-1) + log_probs.view(B, K, -1)  # (B, K, V)
+            vocab_size = cand_scores.size(-1)  # V
 
             # Select top-K beams across K*V per batch
             cand_scores_flat = cand_scores.view(B, -1)              # (B, K*V)
             topk_scores, topk_indices = torch.topk(cand_scores_flat, k=beam_width, dim=-1)
 
             # Recover parent beam and next token from flattened index
-            parent_beam = topk_indices // log_probs.size(-1)        # (B, K)
-            next_token  = topk_indices %  log_probs.size(-1)        # (B, K)
+            parent_beam = topk_indices // vocab_size        # (B, K)
+            next_token  = topk_indices % vocab_size         # (B, K)
 
             # Gather sequences
             gather_beams = torch.gather(
@@ -359,6 +373,15 @@ class SequenceGenerator:
             if seq is a single sequence, return a tensor of same shape with sequence truncated at EOS
             if seq is a batch of sequences, return a list of tensors with each sequence truncated at first EOS
         """
+        # Check if seq is None or invalid - must check None first before any attribute access
+        if seq is None:
+            return []
+        try:
+            if not isinstance(seq, torch.Tensor):
+                return []
+        except Exception:
+            return []
+        
         # Handle single sequence case
         if seq.dim() == 1:
             eos_indices = (seq == tokenizer.eos_id).nonzero()

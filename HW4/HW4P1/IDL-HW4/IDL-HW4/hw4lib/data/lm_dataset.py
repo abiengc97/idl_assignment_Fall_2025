@@ -62,8 +62,7 @@ class LMDataset(Dataset):
 
         # Set up data paths 
         # TODO: Join root and partition to get the text directory
-        self.text_dir = os.path.join(config['root'], 'text', partition)
-
+        self.text_dir = os.path.join(config['root'], partition)
         # TODO: Get all text files in the text directory in sorted order  
         self.text_files = sorted(os.listdir(self.text_dir))
 
@@ -105,8 +104,8 @@ class LMDataset(Dataset):
             self.text_max_len = max(self.text_max_len, len(tokenized)+1)
             
             # TODO: Create shifted and golden versions by adding sos and eos tokens
-            self.transcripts_shifted.append(torch.tensor([self.sos_token] + tokenized))
-            self.transcripts_golden.append(torch.tensor(tokenized + [self.eos_token]))
+            self.transcripts_shifted.append([self.sos_token] + tokenized)
+            self.transcripts_golden.append(tokenized + [self.eos_token])
 
         # Calculate average characters per token
         # DO NOT MODIFY
@@ -145,8 +144,8 @@ class LMDataset(Dataset):
         """
         # TODO: Implement __getitem__
         # Make sure you convert to the right type
-        shifted = self.transcripts_shifted[idx]
-        golden  = self.transcripts_golden[idx]
+        shifted = torch.LongTensor(self.transcripts_shifted[idx])
+        golden  = torch.LongTensor(self.transcripts_golden[idx])
         return shifted, golden
     
     

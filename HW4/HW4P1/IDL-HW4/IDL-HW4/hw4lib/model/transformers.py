@@ -109,11 +109,11 @@ class DecoderOnlyTransformer(nn.Module):
         super().__init__()
         
         # TODO: Implement __init__
-        self.token_embedding = nn.Embedding(num_classes, d_model)
-        self.positional_encoding = PositionalEncoding(d_model, max_len)
-        self.dropout = nn.Dropout(dropout)
-        self.norm = nn.LayerNorm(d_model)
-        self.final_linear = nn.Linear(d_model, num_classes)
+        self.target_embedding       = nn.Embedding(num_classes, d_model)
+        self.positional_encoding    = PositionalEncoding(d_model, max_len)
+        self.dropout                = nn.Dropout(dropout)
+        self.norm                   = nn.LayerNorm(d_model)
+        self.final_linear           = nn.Linear(d_model, num_classes)
 
         # Initialize the decoder
         # DO NOT MODIFY THESE ATTRIBUTES
@@ -126,11 +126,7 @@ class DecoderOnlyTransformer(nn.Module):
         self.dec_layers     = nn.ModuleList([SelfAttentionDecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
 
         # TODO: Create target embedding and other layers
-        self.target_embedding       = nn.Embedding(num_classes, d_model)
-        self.positional_encoding    = PositionalEncoding(d_model, max_len)
-        self.final_linear           = nn.Linear(d_model, num_classes)
-        self.dropout                = nn.Dropout(dropout)
-        self.norm                   = nn.LayerNorm(d_model)
+        # Already initialized above
 
     def forward(self, padded_targets: torch.Tensor, target_lengths: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, dict]:
         '''
@@ -151,19 +147,17 @@ class DecoderOnlyTransformer(nn.Module):
         x = self.positional_encoding(x)
         x = self.dropout(x)
         # TODO: Create padding mask for padded_targets on the same device as the input (use PadMask)
-        pad_mask_dec = PadMask(x, target_lengths)
         if target_lengths is not None:
             pad_mask_dec = PadMask(x, target_lengths)
+        else:
+            # During inference/generation, no padding mask is needed (all positions are valid)
+            batch_size, seq_len = x.size(0), x.size(1)
+            pad_mask_dec = torch.zeros(batch_size, seq_len, dtype=torch.bool, device=x.device)
         
         # TODO: Create causal mask to prevent attending to future tokens on the same device as the input (use CausalMask)
         causal_mask = CausalMask(x)
 
-        # TODO: Apply the embedding
-        x = x + self.token_embedding(padded_targets)
-        # TODO: Apply positional encoding
-        x = x + self.positional_encoding(x)
-        # TODO: Apply dropout 
-        x = self.dropout(x)
+        # Embedding + PE + Dropout were already applied above (once)
 
         # TODO: Pass through all decoder layers, save attention masks
         runnint_att = {}
