@@ -28,7 +28,6 @@ import json
 import tarfile
 import shutil
 import wandb
-import yaml
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {device}")
 

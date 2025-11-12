@@ -86,7 +86,7 @@ class LMTrainer(BaseTrainer):
             targets_golden = targets_golden.to(self.device)
             lengths = lengths.to(self.device)
 
-            with torch.amp.autocast('cuda', enabled=use_amp):
+            with torch.cuda.amp.autocast(enabled=use_amp):
                 raw_preds, attn_weights = self.model(targets_shifted, lengths)
                 B, T, V = raw_preds.shape
                 loss = self.criterion(raw_preds.view(B * T, V), targets_golden.reshape(B * T))
@@ -99,6 +99,9 @@ class LMTrainer(BaseTrainer):
             self.scaler.scale(loss).backward()
 
             if (i + 1) % self.config['training']['gradient_accumulation_steps'] == 0:
+                # Gradient clipping for stability
+                self.scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
                 self.scaler.step(self.optimizer)
                 if not isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     self.scheduler.step()
