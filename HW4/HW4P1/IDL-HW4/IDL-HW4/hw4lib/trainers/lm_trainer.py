@@ -86,7 +86,7 @@ class LMTrainer(BaseTrainer):
             targets_golden = targets_golden.to(self.device)
             lengths = lengths.to(self.device)
 
-            with torch.cuda.amp.autocast(enabled=use_amp):
+            with torch.amp.autocast('cuda', enabled=use_amp):
                 raw_preds, attn_weights = self.model(targets_shifted, lengths)
                 B, T, V = raw_preds.shape
                 loss = self.criterion(raw_preds.view(B * T, V), targets_golden.reshape(B * T))
@@ -132,12 +132,34 @@ class LMTrainer(BaseTrainer):
         avg_perplexity_char = torch.exp(torch.tensor(avg_ce_loss_char))
         batch_bar.close()
 
-        # Ensure we return valid 2D attention weights
-        if last_attn is not None and isinstance(last_attn, torch.Tensor) and last_attn.ndim >= 2:
-            attn_dict = {"self": [last_attn]}
+        # Extract attention weights from dictionary and convert to 2D for plotting
+        if last_attn is not None and isinstance(last_attn, dict):
+            # Get the last layer's attention weights (or first available layer)
+            attn_keys = [k for k in last_attn.keys() if 'dec_self' in k or 'self' in k]
+            if attn_keys:
+                # Get the last layer's attention weights
+                last_layer_key = sorted(attn_keys)[-1]
+                attn_tensor = last_attn[last_layer_key]  # Shape: (batch_size, seq_len, seq_len)
+                # Average over batch dimension to get 2D tensor
+                if attn_tensor.ndim == 3:
+                    attn_2d = attn_tensor.mean(dim=0)  # Average over batch: (seq_len, seq_len)
+                elif attn_tensor.ndim == 2:
+                    attn_2d = attn_tensor
+                else:
+                    attn_2d = torch.zeros(10, 10)
+            else:
+                attn_2d = torch.zeros(10, 10)
+        elif last_attn is not None and isinstance(last_attn, torch.Tensor) and last_attn.ndim >= 2:
+            # Handle case where it's already a tensor
+            if last_attn.ndim == 3:
+                attn_2d = last_attn.mean(dim=0)  # Average over batch
+            else:
+                attn_2d = last_attn
         else:
-            # Return a 2D placeholder instead of scalar
-            attn_dict = {"self": [torch.zeros(10, 10)]}
+            # Return a 2D placeholder
+            attn_2d = torch.zeros(10, 10)
+        
+        attn_dict = {"self": [attn_2d]}
 
         return {
             'ce_loss_token': avg_ce_loss,
@@ -199,12 +221,34 @@ class LMTrainer(BaseTrainer):
         avg_perplexity_char = torch.exp(torch.tensor(avg_ce_loss_char))
         batch_bar.close()
 
-        # Ensure we return valid 2D attention weights
-        if last_attn is not None and isinstance(last_attn, torch.Tensor) and last_attn.ndim >= 2:
-            attn_dict = {"self": [last_attn]}
+        # Extract attention weights from dictionary and convert to 2D for plotting
+        if last_attn is not None and isinstance(last_attn, dict):
+            # Get the last layer's attention weights (or first available layer)
+            attn_keys = [k for k in last_attn.keys() if 'dec_self' in k or 'self' in k]
+            if attn_keys:
+                # Get the last layer's attention weights
+                last_layer_key = sorted(attn_keys)[-1]
+                attn_tensor = last_attn[last_layer_key]  # Shape: (batch_size, seq_len, seq_len)
+                # Average over batch dimension to get 2D tensor
+                if attn_tensor.ndim == 3:
+                    attn_2d = attn_tensor.mean(dim=0)  # Average over batch: (seq_len, seq_len)
+                elif attn_tensor.ndim == 2:
+                    attn_2d = attn_tensor
+                else:
+                    attn_2d = torch.zeros(10, 10)
+            else:
+                attn_2d = torch.zeros(10, 10)
+        elif last_attn is not None and isinstance(last_attn, torch.Tensor) and last_attn.ndim >= 2:
+            # Handle case where it's already a tensor
+            if last_attn.ndim == 3:
+                attn_2d = last_attn.mean(dim=0)  # Average over batch
+            else:
+                attn_2d = last_attn
         else:
-            # Return a 2D placeholder instead of scalar
-            attn_dict = {"self": [torch.zeros(10, 10)]}
+            # Return a 2D placeholder
+            attn_2d = torch.zeros(10, 10)
+        
+        attn_dict = {"self": [attn_2d]}
 
         return {
             'ce_loss_token': avg_ce_loss,
