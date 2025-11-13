@@ -83,3 +83,4 @@ logs/
 # Checkpoint files
 wandb/
 *.pth
+f25-hw4-data/
