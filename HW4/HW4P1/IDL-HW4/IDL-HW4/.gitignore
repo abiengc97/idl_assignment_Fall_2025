@@ -40,7 +40,7 @@ ENV/
 # Project specific
 expts/
 config.yaml
-handin.tar
+
 
 # Distribution / packaging
 .Python
