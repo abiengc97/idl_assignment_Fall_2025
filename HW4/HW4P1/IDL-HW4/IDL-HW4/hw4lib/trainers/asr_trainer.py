@@ -62,19 +62,23 @@ class ASRTrainer(BaseTrainer):
         # TODO: Initialize CE loss
         # How would you set the ignore_index? 
         # Use value in config to set the label_smoothing argument
-        self.ce_criterion = NotImplementedError
+        self.ce_criterion = nn.CrossEntropyLoss(
+            ignore_index=self.tokenizer.pad_id,
+            label_smoothing=self.config['loss']['label_smoothing']
+        )
         
         # TODO: Initialize CTC loss if needed
-        # You can use the pad token id as the blank index
-        self.ctc_criterion = None
+        # Use blank_id for CTC blank token
         self.ctc_weight = self.config['loss'].get('ctc_weight', 0.0)
         if self.ctc_weight > 0:
             self.ctc_criterion = nn.CTCLoss(
-                blank=self.tokenizer.pad_id,
+                blank=self.tokenizer.blank_id,  
                 zero_infinity=True
             )
+        else:
+            self.ctc_criterion = None
         
-        raise NotImplementedError # Remove once implemented
+        
 
 
     def _train_epoch(self, dataloader):
@@ -87,7 +91,7 @@ class ASRTrainer(BaseTrainer):
             Tuple[Dict[str, float], Dict[str, torch.Tensor]]: Training metrics and attention weights
         """
         # TODO: In-fill the _train_epoch method
-        raise NotImplementedError # Remove once implemented
+
     
         # Initialize training variables
         self.model.train()
@@ -104,24 +108,74 @@ class ASRTrainer(BaseTrainer):
         for i, batch in enumerate(dataloader):
             # TODO: Unpack batch and move to device
             feats, targets_shifted, targets_golden, feat_lengths, transcript_lengths = batch
+            
+            # Move to device
+            feats = feats.to(self.device)
+            targets_shifted = targets_shifted.to(self.device)
+            targets_golden = targets_golden.to(self.device) if targets_golden is not None else None
+            feat_lengths = feat_lengths.to(self.device)
+            transcript_lengths = transcript_lengths.to(self.device) if transcript_lengths is not None else None
 
-            with torch.autocast(device_type=self.device, dtype=torch.float16):
+            # Extract device type for autocast (handle "cuda:0" -> "cuda")
+            device_type = "cuda" if "cuda" in str(self.device) else "cpu"
+            with torch.autocast(device_type=device_type, dtype=torch.float16):
                 # TODO: get raw predictions and attention weights and ctc inputs from model
-                seq_out, curr_att, ctc_inputs = NotImplementedError
+                # Model forward expects: (padded_sources, padded_targets, source_lengths, target_lengths)
+                seq_out, curr_att, ctc_inputs = self.model(feats, targets_shifted, feat_lengths, transcript_lengths)
                 
                 # Update running_att with the latest attention weights
                 running_att = curr_att
                 
                 # TODO: Calculate CE loss
-                ce_loss = NotImplementedError
+                # Use targets_golden (not targets_shifted) as the CE labels
+                # Align lengths: seq_out is (B, T_dec, V), targets_golden should match T_dec
+                B, T_dec, V = seq_out.shape
+                if targets_golden is not None:
+                    # Align targets_golden to seq_out length
+                    gold = targets_golden[:, :T_dec]  # (B, T_dec)
+                    ce_loss = self.ce_criterion(seq_out.reshape(-1, V), gold.reshape(-1))
+                else:
+                    # Fallback if targets_golden is None (shouldn't happen in training)
+                    ce_loss = self.ce_criterion(seq_out.view(-1, seq_out.size(-1)), targets_shifted.view(-1))
                 
                 
                 # TODO: Calculate CTC loss if needed
-                if self.ctc_weight > 0:
-                    ctc_loss = NotImplementedError
-                    loss = ce_loss + self.ctc_weight * ctc_loss
+                if self.ctc_weight > 0 and self.ctc_criterion is not None:
+                    # CTC needs log probabilities, not logits
+                    # ctc_inputs['log_probs'] is (src_len, batch_size, num_classes) - but these are logits, need to convert
+                    ctc_log_probs = F.log_softmax(ctc_inputs['log_probs'], dim=-1)  # (src_len, batch_size, num_classes)
+                    # CTC targets should not include SOS or EOS tokens
+                    # targets_golden has EOS but no SOS, so we need to remove EOS
+                    # CTC expects targets as a 1D tensor: concatenate all sequences, removing padding and EOS
+                    ctc_targets_list = []
+                    for j in range(targets_golden.size(0)):
+                        # Get sequence up to (but not including) EOS token, and remove padding
+                        seq_len = transcript_lengths[j].item()
+                        seq = targets_golden[j][:seq_len]  # Remove padding
+                        # Remove EOS if present (use tuple form for robustness)
+                        eos_idx = (seq == self.tokenizer.eos_id).nonzero(as_tuple=True)[0]
+                        if eos_idx.numel() > 0:
+                            seq = seq[:eos_idx[0].item()]
+                        ctc_targets_list.append(seq)
+                    # Concatenate all targets into a single 1D tensor
+                    if len(ctc_targets_list) > 0 and len(ctc_targets_list[0]) > 0:
+                        ctc_targets = torch.cat(ctc_targets_list, dim=0)  # (sum(target_lengths),)
+                    else:
+                        # Handle edge case where all sequences are empty
+                        ctc_targets = torch.tensor([], dtype=torch.long, device=self.device)
+                    # CTC target lengths (without EOS)
+                    ctc_target_lengths = torch.tensor([len(seq) for seq in ctc_targets_list], 
+                                                      dtype=torch.long, device=self.device)
+                    ctc_input_lengths = ctc_inputs['lengths']  # Source lengths
+                    # Only compute CTC loss if we have valid targets
+                    if ctc_targets.size(0) > 0 and ctc_target_lengths.sum() > 0:
+                        ctc_loss = self.ctc_criterion(ctc_log_probs, ctc_targets, ctc_input_lengths, ctc_target_lengths)
+                        loss = ce_loss + self.ctc_weight * ctc_loss
+                    else:
+                        ctc_loss = torch.tensor(0.0, device=self.device)
+                        loss = ce_loss
                 else:
-                    ctc_loss = torch.tensor(0.0)
+                    ctc_loss = torch.tensor(0.0, device=self.device)
                     loss = ce_loss
 
             # Calculate metrics
@@ -136,7 +190,7 @@ class ASRTrainer(BaseTrainer):
             loss = loss / self.config['training']['gradient_accumulation_steps']
 
             # TODO: Backpropagate the loss
-            self.scaler = NotImplementedError
+            self.scaler.scale(loss).backward()
 
             # Only update weights after accumulating enough gradients
             if (i + 1) % self.config['training']['gradient_accumulation_steps'] == 0:
@@ -200,14 +254,22 @@ class ASRTrainer(BaseTrainer):
             Tuple[Dict[str, float], List[Dict[str, Any]]]: Validation metrics and recognition results
         """
         # TODO: In-fill the _validate_epoch method
-        raise NotImplementedError # Remove once implemented
+      
 
         # TODO: Call recognize
-        results = NotImplementedError
+        # Use default greedy config if recognition config is not provided
+        # Force full-dataset validation (process all batches)
+        recognition_config = self.config.get('recognition', None)
+        if recognition_config is None:
+            recognition_config = {}
+        else:
+            recognition_config = recognition_config.copy()
+        recognition_config['num_batches'] = None  # Process all batches during validation
+        results = self.recognize(dataloader, recognition_config)
         
         # TODO: Extract references and hypotheses from results
-        references = NotImplementedError
-        hypotheses = NotImplementedError
+        references = [r['target'] for r in results]
+        hypotheses = [r['generated'] for r in results]
         
         # Calculate metrics on full batch
         metrics = self._calculate_asr_metrics(references, hypotheses)
@@ -230,7 +292,6 @@ class ASRTrainer(BaseTrainer):
             raise ValueError("Optimizer is not initialized, initialize it first!")
         
         # TODO: In-fill the train method
-        raise NotImplementedError # Remove once implemented
 
         # Set max transcript length
         self.text_max_len = max(val_dataloader.dataset.text_max_len, train_dataloader.dataset.text_max_len)
@@ -244,10 +305,10 @@ class ASRTrainer(BaseTrainer):
         for epoch in range(self.current_epoch, self.current_epoch + epochs):
 
             # TODO: Train for one epoch
-            train_metrics, train_attn = NotImplementedError, NotImplementedError
+            train_metrics, train_attn = self._train_epoch(train_dataloader)
             
             # TODO: Validate
-            val_metrics, val_results = NotImplementedError, NotImplementedError
+            val_metrics, val_results = self._validate_epoch(val_dataloader)
 
             # Step ReduceLROnPlateau scheduler with validation loss
             if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
@@ -353,7 +414,10 @@ class ASRTrainer(BaseTrainer):
             raise ValueError("text_max_len is not set. Please run training loop first or provide a max_length")
         
         # TODO: In-fill the recognize method
-        raise NotImplementedError # Remove once implemented
+        if recognition_config is None:
+            recognition_config = self.config.get('recognition', None)
+        if config_name is None:
+            config_name = 'greedy'
 
         if recognition_config is None:
             # Default config (greedy search)
@@ -389,10 +453,16 @@ class ASRTrainer(BaseTrainer):
             for i, batch in enumerate(dataloader):
                 # TODO: Unpack batch and move to device
                 # TODO: Handle both cases where targets may or may not be None (val set v. test set) 
-                feats, _, targets_golden, feat_lengths, _ = batch
+                feats, _, targets_golden, feat_lengths, transcript_lengths = batch
+                
+                # Move to device
+                feats = feats.to(self.device)
+                feat_lengths = feat_lengths.to(self.device)
+                targets_golden = targets_golden.to(self.device) if targets_golden is not None else None
+                transcript_lengths = transcript_lengths.to(self.device) if transcript_lengths is not None else None
                 
                 # TODO: Encode speech features to hidden states
-                encoder_output, pad_mask_src, _, _ = NotImplementedError, NotImplementedError, NotImplementedError, NotImplementedError
+                encoder_output, pad_mask_src, _, _ = self.model.encode(feats, feat_lengths)
                 
                 # Define scoring function for this batch
                 def get_score(x):
@@ -407,20 +477,27 @@ class ASRTrainer(BaseTrainer):
 
                 # TODO: Initialize prompts as a batch of SOS tokens
                 batch_size = feats.size(0)
-                prompts = NotImplementedError
+                prompts = torch.full((batch_size, 1), self.tokenizer.sos_id, dtype=torch.long, device=self.device)
 
                 # TODO: Generate sequences
                 if recognition_config['beam_width'] > 1:
                     # TODO: If you have implemented beam search, generate sequences using beam search
-                    seqs, scores = NotImplementedError, NotImplementedError
-                    raise NotImplementedError # Remove if you implemented the beam search method
+                    seqs, scores = generator.generate_beam(
+                        prompts,
+                        beam_width=recognition_config['beam_width'],
+                        temperature=recognition_config['temperature'],
+                        repeat_penalty=recognition_config['repeat_penalty']
+                    )
                     # Pick best beam
                     seqs = seqs[:, 0, :]
                     scores = scores[:, 0]
                 else:
                     # TODO: Generate sequences using greedy search
-                    seqs, scores = NotImplementedError, NotImplementedError
-                    raise NotImplementedError # Remove if you implemented the greedy search method
+                    seqs, scores = generator.generate_greedy(
+                        prompts,
+                        temperature=recognition_config['temperature'],
+                        repeat_penalty=recognition_config['repeat_penalty']
+                    )
 
                 # Clean up
                 del feats, feat_lengths, encoder_output, pad_mask_src, prompts
@@ -431,7 +508,33 @@ class ASRTrainer(BaseTrainer):
                 
                 # Store results as a list of dictionaries with target and generated sequences and scores
                 if targets_golden is not None:
-                    post_processed_targets = generator.post_process_sequence(targets_golden, self.tokenizer)
+                    # Truncate targets to actual lengths and remove EOS before post-processing
+                    targets_list = []
+                    if transcript_lengths is not None:
+                        for j in range(targets_golden.size(0)):
+                            seq_len = transcript_lengths[j].item()
+                            seq = targets_golden[j][:seq_len]  # Remove padding
+                            # Cut at first EOS if present
+                            eos_indices = (seq == self.tokenizer.eos_id).nonzero(as_tuple=False)
+                            if len(eos_indices) > 0:
+                                seq = seq[:eos_indices[0].item()]
+                            targets_list.append(seq)
+                    else:
+                        # Fallback: process full tensor if transcript_lengths not available
+                        for j in range(targets_golden.size(0)):
+                            seq = targets_golden[j]
+                            # Cut at first EOS if present
+                            eos_indices = (seq == self.tokenizer.eos_id).nonzero(as_tuple=False)
+                            if len(eos_indices) > 0:
+                                seq = seq[:eos_indices[0].item()]
+                            targets_list.append(seq)
+                    
+                    # Post-process each trimmed target sequence
+                    post_processed_targets = []
+                    for target_seq in targets_list:
+                        processed = generator.post_process_sequence(target_seq, self.tokenizer)
+                        post_processed_targets.append(processed)
+                    
                     for j, (pred, target) in enumerate(zip(post_processed_preds, post_processed_targets)):
                         results.append({
                             'target': self.tokenizer.decode(target.tolist(), skip_special_tokens=True),
