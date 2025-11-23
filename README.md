@@ -150,10 +150,10 @@ Each homework typically consists of two parts:
 - Reference implementations
 
 ### External Resources
-- [PyTorch Documentation](https://pytorch.org/docs/)
+
 - [NumPy Documentation](https://numpy.org/doc/)
 - [Deep Learning Book](http://www.deeplearningbook.org/)
-- [CS231n Course Notes](http://cs231n.github.io/)
+- [CS231n Course Notes](https://deeplearning.cs.cmu.edu/F25/index.html)
 
 ## Academic Integrity
 
