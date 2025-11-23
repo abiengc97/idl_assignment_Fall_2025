@@ -20,3 +20,4 @@
   - Frequency masking: 2 masks per sample with width range of 5 frequency bands
   - Time masking: 2 masks per sample with width range of 30 time steps
   - Applied only during training, not during validation/testing
+  https://wandb.ai/agcheria-carnegie-mellon-university/HW4P2/runs/4r4hchz6
