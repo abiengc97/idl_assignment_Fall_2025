@@ -153,7 +153,7 @@ Each homework typically consists of two parts:
 
 - [NumPy Documentation](https://numpy.org/doc/)
 - [Deep Learning Book](http://www.deeplearningbook.org/)
-- [CS231n Course Notes](https://deeplearning.cs.cmu.edu/F25/index.html)
+- [Introduction to Deep Learning -CMU-11785](https://deeplearning.cs.cmu.edu/F25/index.html)
 
 ## Academic Integrity
 
