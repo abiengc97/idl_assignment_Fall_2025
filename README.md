@@ -1,6 +1,6 @@
 # IDL Fall 2025 Assignments
 
-This repository contains all assignments for the **Interactive Deep Learning (IDL)** course at Carnegie Mellon University, Fall 2025.
+This repository contains all assignments for the **Introduction Deep Learning (IDL)** course at Carnegie Mellon University, Fall 2025.
 
 ## Overview
 
@@ -178,7 +178,7 @@ This repository contains course assignments and is intended for educational purp
 
 ---
 
-**Course**: Interactive Deep Learning (IDL)  
+**Course**: Introduction Deep Learning (IDL)  
 **Institution**: Carnegie Mellon University  
 **Semester**: Fall 2025  
 **Repository**: IDL Assignment Solutions
