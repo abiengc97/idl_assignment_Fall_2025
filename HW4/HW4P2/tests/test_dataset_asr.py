@@ -71,8 +71,8 @@ def test_asr_data_init(dataset):
     # Verify transcript decoding
     if dataset.partition != 'test-clean':
         for shifted, golden in zip(dataset.transcripts_shifted, dataset.transcripts_golden):
-            shifted_text = dataset.tokenizer.decode(shifted[1:])  # Exclude SOS token
-            golden_text = dataset.tokenizer.decode(golden[:-1])  # Exclude EOS token
+            shifted_text = dataset.tokenizer.decode(shifted[1:].tolist())  # Exclude SOS token
+            golden_text = dataset.tokenizer.decode(golden[:-1].tolist())  # Exclude EOS token
             assert golden_text == shifted_text, \
                 f"Decoded transcript mismatch: {shifted_text} != {golden_text}"
         print("Test Passed: All transcripts are decoded correctly after removing SOS and EOS tokens.")
